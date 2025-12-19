@@ -103,13 +103,13 @@ builder.Services.AddSwaggerGen(opciones =>
     opciones.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo
     {
         Version = "v1",
-        Title = "Biblioteca API - Hola, GitHub Actions",
-        Description = "Este es un web api para trabajar con datos de autores y libros",
+        Title = "Suscripcion API",
+        Description = "Este es un web api para trabajar JWS/API KEY, con datos de autores y libros",
         Contact = new Microsoft.OpenApi.Models.OpenApiContact
         {
-            Email = "felipe@hotmail.com",
-            Name = "Felipe Gavilán",
-            Url = new Uri("https://gavilan.blog")
+            Email = "o.inostrozamendez@gmail.com",
+            Name = "Oscar inostroza",
+            Url = new Uri("https://oinostroza.github.io")
         },
         License = new Microsoft.OpenApi.Models.OpenApiLicense
         {
@@ -121,13 +121,13 @@ builder.Services.AddSwaggerGen(opciones =>
     opciones.SwaggerDoc("v2", new Microsoft.OpenApi.Models.OpenApiInfo
     {
         Version = "v2",
-        Title = "Biblioteca API",
-        Description = "Este es un web api para trabajar con datos de autores y libros",
+        Title = "Suscripcion API",
+        Description = "Este es un web api para trabajar JWS/API KEY, con datos de autores y libros",
         Contact = new Microsoft.OpenApi.Models.OpenApiContact
         {
-            Email = "felipe@hotmail.com",
-            Name = "Felipe Gavilán",
-            Url = new Uri("https://gavilan.blog")
+            Email = "o.inostrozamendez@gmail.com",
+            Name = "Oscar inostroza",
+            Url = new Uri("https://oinostroza.github.io")
         },
         License = new Microsoft.OpenApi.Models.OpenApiLicense
         {
@@ -208,8 +208,8 @@ app.UseExceptionHandler(exceptionHandlerApp => exceptionHandlerApp.Run(async con
 app.UseSwagger();
 app.UseSwaggerUI(opciones =>
 {
-    opciones.SwaggerEndpoint("/swagger/v1/swagger.json", "Biblioteca API V1");
-    opciones.SwaggerEndpoint("/swagger/v2/swagger.json", "Biblioteca API V2");
+    opciones.SwaggerEndpoint("/swagger/v1/swagger.json", "Suscripcion API V1");
+    opciones.SwaggerEndpoint("/swagger/v2/swagger.json", "Suscripcion API V2");
 });
  
 app.UseStaticFiles();
