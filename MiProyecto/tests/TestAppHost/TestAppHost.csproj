@@ -1,0 +1,18 @@
+<Project Sdk="Aspire.AppHost.Sdk/13.1.2">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>MiProyecto.TestAppHost</RootNamespace>
+    <AssemblyName>MiProyecto.TestAppHost</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Aspire.Hosting.AppHost" />
+    <PackageReference Include="CommunityToolkit.Aspire.Hosting.SQLite" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Shared\Shared.csproj" IsAspireProjectResource="false" />
+  </ItemGroup>
+
+</Project>
