@@ -30,8 +30,15 @@ public static class DependencyInjection
         builder.Services.AddDbContext<ApplicationDbContext>((sp, options) =>
         {
             options.AddInterceptors(sp.GetServices<ISaveChangesInterceptor>());
-            //options.UseSqlite(connectionString);
-            options.UseNpgsql(connectionString);
+            
+            options.UseNpgsql(connectionString, npgsqlOptions => 
+            {
+                npgsqlOptions.EnableRetryOnFailure(
+                    maxRetryCount: 5,
+                    maxRetryDelay: TimeSpan.FromSeconds(10),
+                    errorCodesToAdd: null);
+            });
+
             options.ConfigureWarnings(warnings => warnings.Ignore(RelationalEventId.PendingModelChangesWarning));
         });
 
@@ -91,7 +98,8 @@ public static class DependencyInjection
             {
                 o.UsePostgres(); 
                 o.UseBusOutbox(); 
-                o.QueryDelay = TimeSpan.FromSeconds(1);    
+                o.QueryDelay = TimeSpan.FromSeconds(5);    
+                o.QueryMessageLimit = 50; 
                 o.DisableInboxCleanupService(); 
                 
             });
@@ -101,13 +109,13 @@ public static class DependencyInjection
                 cfg.Host("localhost", "/");
                 cfg.ReceiveEndpoint("generate-pdf-queue", e => 
                 {
-                    e.PrefetchCount = 100;                 
+                    e.PrefetchCount = 400;                 
                     e.Batch<GenerateSinglePdfRequest>(b => {
-                        b.MessageLimit = 50;
+                        b.MessageLimit = 100;
                         b.TimeLimit = TimeSpan.FromSeconds(5);
                     });
 
-                    e.ConcurrentMessageLimit = 10;                  
+                    e.ConcurrentMessageLimit = 4;                  
                     e.ConfigureConsumer<GenerateSinglePdfConsumer>(context);
                 });
 

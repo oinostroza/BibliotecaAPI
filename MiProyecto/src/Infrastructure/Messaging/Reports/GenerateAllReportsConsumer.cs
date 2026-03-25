@@ -2,6 +2,7 @@ using MassTransit;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using MiProyecto.Application.Common.Interfaces;
+using MiProyecto.Domain.Enums;
 using MiProyecto.Domain.Events;
 
 namespace MiProyecto.Infrastructure.Messaging.Consumers.Reports;
@@ -23,31 +24,43 @@ public class GenerateAllReportsConsumer : IConsumer<GenerateAllReportsRequest>
 
     public async Task Consume(ConsumeContext<GenerateAllReportsRequest> context)
     {
-         _logger.LogInformation("🔍 [SPLITTER] Buscando periodos con datos en la base de datos...");
-        var periodos = await _context.Avisos
-            .Select(a => new { a.FechaCancelacion.Month, a.FechaCancelacion.Year })
-            .Distinct()
-            .ToListAsync(context.CancellationToken);
+        _logger.LogInformation("🔍 [SPLITTER] Iniciando reparto masivo...");
 
-        foreach (var p in periodos){
-            await _publishEndpoint.Publish(new GenerateMonthlyReportRequest(p.Month, p.Year));
-        }
-         _logger.LogInformation("✅ [SPLITTER] {Cant} mensajes de Excel encolados.", periodos.Count);
+        // var periodos = await _context.Avisos
+        //     .Select(a => new { a.FechaCancelacion.Month, a.FechaCancelacion.Year })
+        //     .Distinct()
+        //     .ToListAsync(context.CancellationToken);
 
-        var avisoIds = await _context.Avisos
+        // foreach (var p in periodos) {
+        //     await _publishEndpoint.Publish(new GenerateMonthlyReportRequest(p.Month, p.Year));
+        // }
+
+        var todosLosIds = await _context.Avisos
+            .AsNoTracking()
             .OrderBy(a => a.Id)
             .Select(a => a.Id)
             .ToListAsync(context.CancellationToken); 
 
-        _logger.LogInformation("Wait... Encolando {Cant} solicitudes de PDF individual.", avisoIds.Count);
-        foreach (var id in avisoIds)
+        var idsYaProcesados = await _context.ProcesosAvisos
+            .AsNoTracking()
+            .Where(p => p.Estado == EstadoProceso.Completado)
+            .Select(p => p.AvisoId)
+            .ToListAsync(context.CancellationToken);
+
+        var idsPendientes = todosLosIds.Except(idsYaProcesados).ToList();
+
+        if (!idsPendientes.Any())
         {
-            // Publicamos un mensaje por cada ID
-            await _publishEndpoint.Publish(new GenerateSinglePdfRequest(id));
+            _logger.LogInformation("✅ [SPLITTER] Todos los PDFs ya están generados. Nada que encolar.");
+            return;
         }
 
-        _logger.LogInformation("🏁 [SPLITTER] Proceso de encolado finalizado exitosamente.");
+        _logger.LogInformation("🚀 [SPLITTER] Encolando solo faltantes: {Cant}", idsPendientes.Count);
 
-
+        var tareasPdf = idsPendientes.Select(id => new GenerateSinglePdfRequest(id)).ToList();
+        await _publishEndpoint.PublishBatch(tareasPdf, context.CancellationToken);
+        
+        _logger.LogInformation("🏁 [SPLITTER] Mensajes enviados.");
     }
+
 }

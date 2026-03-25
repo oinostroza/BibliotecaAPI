@@ -16,8 +16,8 @@ public static class InitialiserExtensions
 
         var initialiser = scope.ServiceProvider.GetRequiredService<ApplicationDbContextInitialiser>();
 
-        // await initialiser.InitialiseAsync();
-        //await initialiser.SeedAsync();
+        //await initialiser.InitialiseAsync();
+       
     }
 }
 

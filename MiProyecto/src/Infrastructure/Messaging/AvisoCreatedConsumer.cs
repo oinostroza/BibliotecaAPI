@@ -21,7 +21,6 @@ public class AvisoCreatedConsumer : IConsumer<AvisoCreatedIntegrationEvent>
     public async Task Consume(ConsumeContext<AvisoCreatedIntegrationEvent> context)
 {
     var data = context.Message;
-    _logger.LogInformation("📥 [CONSUMER] Procesando Aviso: {A} Póliza: {P}", data.NumeroAviso, data.NumeroPoliza);
 
     // 1. VALIDACIÓN: ¿Existe ya en la base de datos?
     var existe = await _context.Avisos
@@ -53,12 +52,9 @@ public class AvisoCreatedConsumer : IConsumer<AvisoCreatedIntegrationEvent>
 
     try 
     {
-        _context.Avisos.Add(nuevoAviso);
-        
-        // 3. GUARDAR: EF Core inserta el Aviso, genera el ID y luego inserta los Detalles
+        _context.Avisos.Add(nuevoAviso);       
         await _context.SaveChangesAsync(context.CancellationToken);
         
-        _logger.LogInformation("✅ [CONSUMER] Guardado exitoso. ID Generado: {Id}", nuevoAviso.Id);
     }
     catch (Exception ex)
     {

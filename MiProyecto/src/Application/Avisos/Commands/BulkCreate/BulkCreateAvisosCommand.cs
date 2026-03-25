@@ -20,7 +20,7 @@ public class BulkCreateAvisosCommandHandler : IRequestHandler<BulkCreateAvisosCo
 
     public async Task<string> Handle(BulkCreateAvisosCommand request, CancellationToken cancellationToken)
     {
-        int totalAvisos = 3000;
+        int totalAvisos = 50000;
         DateTime fechaInicio = new DateTime(2024, 1, 1); // Empezamos en Enero 2024
         Random rnd = new();
 
@@ -33,15 +33,17 @@ public class BulkCreateAvisosCommandHandler : IRequestHandler<BulkCreateAvisosCo
 
             var eventMsg = new AvisoCreatedIntegrationEvent
             {
-                NumeroPoliza = 2000 + i, // Poliza única para evitar tu validación de duplicados
-                NumeroAviso = 1000 + i,
+                NumeroPoliza = 3000 + i, // Poliza única para evitar tu validación de duplicados
+                NumeroAviso = 4000 + i,
                 NombreCliente = $"Cliente Dummy {i}",
                 RutCliente = $"{rnd.Next(10, 25)}123456-K",
                 FechaCancelacion = fechaAviso.AddDays(15).ToUniversalTime(), 
                 Cuotas = new List<CuotaDto>
                 {
-                    new() { NumeroCuota = 1, TotalCuota = rnd.Next(10000, 50000), Observacion = "Cuota 1/2" },
-                    new() { NumeroCuota = 2, TotalCuota = rnd.Next(10000, 50000), Observacion = "Cuota 2/2" }
+                    new() { NumeroCuota = 1, TotalCuota = rnd.Next(10000, 50000), Observacion = "Cuota 1/4" },
+                    new() { NumeroCuota = 2, TotalCuota = rnd.Next(10000, 50000), Observacion = "Cuota 2/4" },
+                    new() { NumeroCuota = 3, TotalCuota = rnd.Next(20000, 50000), Observacion = "Cuota 3/4" },
+                    new() { NumeroCuota = 4, TotalCuota = rnd.Next(30000, 50000), Observacion = "Cuota 4/4" }
                 }
             }; 
 
