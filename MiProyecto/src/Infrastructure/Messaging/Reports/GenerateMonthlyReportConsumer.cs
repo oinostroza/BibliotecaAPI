@@ -12,6 +12,7 @@ public class GenerateMonthlyReportConsumer : IConsumer<GenerateMonthlyReportRequ
     private readonly ISender _sender;
     private readonly IExcelService _excelService;
     private readonly ILogger<GenerateMonthlyReportConsumer> _logger;
+    private static int _excelCount = 0;
 
     
 
@@ -25,7 +26,6 @@ public class GenerateMonthlyReportConsumer : IConsumer<GenerateMonthlyReportRequ
     public async Task Consume(ConsumeContext<GenerateMonthlyReportRequest> context)
     {
         var msg = context.Message;
-        _logger.LogInformation("📥 [WORKER] Iniciando reporte para el periodo: {Mes}/{Anio}", msg.Mes, msg.Anio);   
 
         var datos = await _sender.Send(new GetAvisosExcelQuery(msg.Mes, msg.Anio));
 
@@ -35,7 +35,6 @@ public class GenerateMonthlyReportConsumer : IConsumer<GenerateMonthlyReportRequ
              return;
         }
         
-        _logger.LogInformation("📊 [WORKER] Procesando {Cant} avisos para el Excel de {Mes}/{Anio}...", datos.Count, msg.Mes, msg.Anio);
         var bytes = _excelService.GenerarArchivoUnico(datos, $"{msg.Mes}_{msg.Anio}");
 
         // Carpeta donde se guardarán (asegúrate que exista)
@@ -46,6 +45,11 @@ public class GenerateMonthlyReportConsumer : IConsumer<GenerateMonthlyReportRequ
         var path = Path.Combine(folder, fileName);
         
         await File.WriteAllBytesAsync(path, bytes);
-        _logger.LogInformation("✅ [WORKER] Archivo guardado exitosamente: {Path}", fileName);
+
+        var current = Interlocked.Increment(ref _excelCount);
+        if (current % 5 == 0 || current == 12) 
+        {
+            _logger.LogInformation("📊 [PROGRESS-EXCEL] Generados {Cant} de 12 archivos Excel.", current);
+        }
     }
 }

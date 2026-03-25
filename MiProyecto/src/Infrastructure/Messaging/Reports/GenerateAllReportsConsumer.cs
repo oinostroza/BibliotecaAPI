@@ -23,16 +23,16 @@ public class GenerateAllReportsConsumer : IConsumer<GenerateAllReportsRequest>
 
     public async Task Consume(ConsumeContext<GenerateAllReportsRequest> context)
     {
-        //  _logger.LogInformation("🔍 [SPLITTER] Buscando periodos con datos en la base de datos...");
-        // var periodos = await _context.Avisos
-        //     .Select(a => new { a.FechaCancelacion.Month, a.FechaCancelacion.Year })
-        //     .Distinct()
-        //     .ToListAsync(context.CancellationToken);
+         _logger.LogInformation("🔍 [SPLITTER] Buscando periodos con datos en la base de datos...");
+        var periodos = await _context.Avisos
+            .Select(a => new { a.FechaCancelacion.Month, a.FechaCancelacion.Year })
+            .Distinct()
+            .ToListAsync(context.CancellationToken);
 
-        // foreach (var p in periodos){
-        //     await _publishEndpoint.Publish(new GenerateMonthlyReportRequest(p.Month, p.Year));
-        // }
-        // _logger.LogInformation("✅ [SPLITTER] {Cant} mensajes de Excel encolados.", periodos.Count);
+        foreach (var p in periodos){
+            await _publishEndpoint.Publish(new GenerateMonthlyReportRequest(p.Month, p.Year));
+        }
+         _logger.LogInformation("✅ [SPLITTER] {Cant} mensajes de Excel encolados.", periodos.Count);
 
         var avisoIds = await _context.Avisos
             .OrderBy(a => a.Id)

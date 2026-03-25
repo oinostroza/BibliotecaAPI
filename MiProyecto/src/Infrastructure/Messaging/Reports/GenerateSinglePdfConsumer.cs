@@ -12,6 +12,8 @@ public class GenerateSinglePdfConsumer : IConsumer<GenerateSinglePdfRequest>
     private readonly IApplicationDbContext _context;
     private readonly IPdfService _pdfService;
     private readonly ILogger<GenerateSinglePdfConsumer> _logger;
+    private static int _pdfCount = 0;
+
 
     public GenerateSinglePdfConsumer(IApplicationDbContext context, IPdfService pdfService, ILogger<GenerateSinglePdfConsumer> logger)
     {
@@ -29,7 +31,6 @@ public class GenerateSinglePdfConsumer : IConsumer<GenerateSinglePdfRequest>
 
         if (aviso == null) return;
 
-        // 2. Mapeo directo
         var dto = new AvisoPdfDto {
             NumeroPoliza = aviso.NumeroPoliza.ToString(),
             NumeroAviso = aviso.NumeroAviso.ToString(),
@@ -43,24 +44,23 @@ public class GenerateSinglePdfConsumer : IConsumer<GenerateSinglePdfRequest>
             }).ToList()
         };
 
-        // 3. Generación (QuestPDF es CPU-bound)
         var pdfBytes = await _pdfService.GenerarAvisoPdfAsync(dto);
-
-        // 4. Escritura optimizada
         var folder = Path.Combine(Directory.GetCurrentDirectory(), "archivos", "pdfs");
         
-        if (!Directory.Exists(folder)) 
-        {
+        if (!Directory.Exists(folder)) {
             Directory.CreateDirectory(folder);
         }
 
         var path = Path.Combine(folder, $"Aviso_{aviso.NumeroPoliza}_{aviso.Id}.pdf");
-        
-        // Al usar WriteAllBytesAsync, el hilo se libera mientras el disco escribe
         await File.WriteAllBytesAsync(path, pdfBytes, context.CancellationToken);
+        var current = Interlocked.Increment(ref _pdfCount);
+        if (current % 100 == 0)
+        {
+            _logger.LogInformation("🚀 [PROGRESS-PDF] Completados {Cant} ", current);
+        }
+        
+    
 
-        // Log minimalista para no saturar la consola (o usa el contador cada 100)
-        _logger.LogInformation("✅ Generado: Póliza {Poliza}", aviso.NumeroPoliza);
     }
 
    

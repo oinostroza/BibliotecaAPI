@@ -90,7 +90,7 @@ public static class DependencyInjection
             x.UsingRabbitMq((context, cfg) =>
             {
                 cfg.ReceiveEndpoint("generate-pdf-queue", e => {
-                    e.ConcurrentMessageLimit = 1; 
+                    e.ConcurrentMessageLimit = 10; 
                     e.ConfigureConsumer<GenerateSinglePdfConsumer>(context);
                 });
                 cfg.Host("localhost", "/");
