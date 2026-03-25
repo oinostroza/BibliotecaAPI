@@ -12,6 +12,8 @@ using MassTransit;
 using MiProyecto.Infrastructure.Messaging;
 using MiProyecto.Infrastructure.Services;
 using MiProyecto.Infrastructure.Messaging.Consumers.Reports;
+using MiProyecto.Application.Common.Models;
+using MiProyecto.Domain.Events;
 
 namespace Microsoft.Extensions.DependencyInjection;
 
@@ -65,8 +67,15 @@ public static class DependencyInjection
             options.WaitUntilStarted = false;
             options.StartTimeout = TimeSpan.FromSeconds(5);
         });
+
+
         builder.Services.AddTransient<IExcelService, ExcelService>();
         builder.Services.AddSingleton<IPdfService, PdfService>();
+           // 1. Redis
+        builder.Services.AddStackExchangeRedisCache(options => {
+            options.Configuration = builder.Configuration.GetConnectionString("RedisConnection");
+        }); // 2. Labels
+        builder.Services.Configure<ProcessLabelSettings>(builder.Configuration.GetSection("ProcessLabels"));
 
         builder.Services.AddMassTransit(x =>
         {     
@@ -89,12 +98,19 @@ public static class DependencyInjection
 
             x.UsingRabbitMq((context, cfg) =>
             {
-                cfg.ReceiveEndpoint("generate-pdf-queue", e => {
-                    e.ConcurrentMessageLimit = 10; 
+                cfg.Host("localhost", "/");
+                cfg.ReceiveEndpoint("generate-pdf-queue", e => 
+                {
+                    e.PrefetchCount = 100;                 
+                    e.Batch<GenerateSinglePdfRequest>(b => {
+                        b.MessageLimit = 50;
+                        b.TimeLimit = TimeSpan.FromSeconds(5);
+                    });
+
+                    e.ConcurrentMessageLimit = 10;                  
                     e.ConfigureConsumer<GenerateSinglePdfConsumer>(context);
                 });
-                cfg.Host("localhost", "/");
-                // Configura automáticamente las colas basadas en tus Consumers registrados
+
                 cfg.ConfigureEndpoints(context); 
             });
 

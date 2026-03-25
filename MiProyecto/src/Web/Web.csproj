@@ -2,7 +2,6 @@
 
   <PropertyGroup>
     <RootNamespace>MiProyecto.Web</RootNamespace>
-      <PreserveCompilationContext>true</PreserveCompilationContext>
     <AssemblyName>MiProyecto.Web</AssemblyName>
     <OpenApiDocumentsDirectory>./wwwroot/openapi/</OpenApiDocumentsDirectory>
     <OpenApiGenerateDocumentsOptions>--file-name v1</OpenApiGenerateDocumentsOptions>
