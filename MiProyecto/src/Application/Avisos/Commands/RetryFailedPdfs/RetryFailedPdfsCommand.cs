@@ -23,18 +23,20 @@ public class RetryFailedPdfsCommandHandler : IRequestHandler<RetryFailedPdfsComm
     public async Task<int> Handle(RetryFailedPdfsCommand request, CancellationToken cancellationToken)
     {
         
-        var idsFallidos = await _context.ProcesosAvisos
+        var fallidos = await _context.ProcesosAvisos
+            .AsNoTracking()
             .Where(p => p.Estado == EstadoProceso.Error && p.TipoProceso == "PDF")
-            .Select(p => p.AvisoId)
+            .Select(p => new { p.AvisoId, p.Id })
             .ToListAsync(cancellationToken);
 
-        if (!idsFallidos.Any()) return 0;
+        if (!fallidos.Any()) return 0;
 
-        foreach (var id in idsFallidos)
-        {
-            await _publishEndpoint.Publish(new GenerateSinglePdfRequest(id), cancellationToken);
-        }
 
-        return idsFallidos.Count;
+        var mensajes = fallidos.Select(f => new GenerateSinglePdfRequest(f.AvisoId, 0)).ToList(); 
+        
+        await _publishEndpoint.PublishBatch(mensajes, cancellationToken);
+
+
+        return fallidos.Count;
     }
 }

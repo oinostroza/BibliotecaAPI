@@ -71,8 +71,8 @@ public static class DependencyInjection
 
         builder.Services.Configure<MassTransitHostOptions>(options =>
         {
-            options.WaitUntilStarted = false;
-            options.StartTimeout = TimeSpan.FromSeconds(5);
+            options.WaitUntilStarted = true;
+            options.StartTimeout = TimeSpan.FromSeconds(30);
         });
 
 
@@ -88,7 +88,6 @@ public static class DependencyInjection
         {     
             x.AddConsumer<TodoItemCreatedConsumer>();
             x.AddConsumer<AvisoCreatedConsumer>();
-            x.AddConsumer<GenerateAllReportsConsumer>();
             x.AddConsumer<GenerateMonthlyReportConsumer>();
             x.AddConsumer<GenerateSinglePdfConsumer>();
 
@@ -98,8 +97,8 @@ public static class DependencyInjection
             {
                 o.UsePostgres(); 
                 o.UseBusOutbox(); 
-                o.QueryDelay = TimeSpan.FromSeconds(5);    
-                o.QueryMessageLimit = 50; 
+                o.QueryDelay = TimeSpan.FromMilliseconds(500);    
+                o.QueryMessageLimit = 100; 
                 o.DisableInboxCleanupService(); 
                 
             });
@@ -109,7 +108,8 @@ public static class DependencyInjection
                 cfg.Host("localhost", "/");
                 cfg.ReceiveEndpoint("generate-pdf-queue", e => 
                 {
-                    e.PrefetchCount = 400;                 
+                    e.Bind<GenerateSinglePdfRequest>(); 
+                    e.PrefetchCount = 400;    
                     e.Batch<GenerateSinglePdfRequest>(b => {
                         b.MessageLimit = 100;
                         b.TimeLimit = TimeSpan.FromSeconds(5);
@@ -119,7 +119,9 @@ public static class DependencyInjection
                     e.ConfigureConsumer<GenerateSinglePdfConsumer>(context);
                 });
 
-                cfg.ConfigureEndpoints(context); 
+                //cfg.ConfigureEndpoints(context); 
+                cfg.ConfigureEndpoints(context, filter => 
+                    filter.Exclude<GenerateSinglePdfConsumer>()); 
             });
 
         });

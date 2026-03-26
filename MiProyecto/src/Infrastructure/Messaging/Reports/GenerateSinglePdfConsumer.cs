@@ -35,19 +35,18 @@ public class GenerateSinglePdfConsumer : IConsumer<Batch<GenerateSinglePdfReques
 
     public async Task Consume(ConsumeContext<Batch<GenerateSinglePdfRequest>> context)
     {
-        // Extraemos los mensajes del lote
+
+        _logger.LogInformation("📥 [CONSUMER] Recibido lote de {Count} mensajes.", context.Message.Length);
+
         var messages = context.Message.Select(m => m.Message).ToList();
-        var allIds = messages.Select(m => m.AvisoId).ToList();
-        var listaResultados = new List<ProcesoAviso>();
+        var periodoId = messages.First().PeriodoId; 
+        var listaFinal = new List<ProcesoAviso>();
 
-        // 1. FILTRO DE REDIS (Idempotencia rápida)
-        var idsAProcesar = new List<int>(); 
-        foreach (var id in allIds)
-        {
-            var status = await _cache.GetStringAsync($"pdf_idemp_{id}", context.CancellationToken);
-            if (status != "OK") idsAProcesar.Add(id);
+        var idsAProcesar = new List<int>();
+        foreach (var m in messages) {
+            if (await _cache.GetStringAsync($"pdf_ok_{m.AvisoId}") == null) 
+                idsAProcesar.Add(m.AvisoId);
         }
-
         if (!idsAProcesar.Any()) return;
 
         var avisosData = await _context.Avisos
@@ -69,7 +68,7 @@ public class GenerateSinglePdfConsumer : IConsumer<Batch<GenerateSinglePdfReques
                 await File.WriteAllBytesAsync(path, bytes, context.CancellationToken);
 
                 // ÉXITO
-                listaResultados.Add(new ProcesoAviso { 
+                listaFinal.Add(new ProcesoAviso { 
                     AvisoId = aviso.Id, 
                     Estado = EstadoProceso.Completado, 
                     RutaArchivo = path, 
@@ -77,7 +76,7 @@ public class GenerateSinglePdfConsumer : IConsumer<Batch<GenerateSinglePdfReques
                     TipoProceso = "PDF" 
                 });
 
-                await _cache.SetStringAsync($"pdf_idemp_{aviso.Id}", "OK", 
+                await _cache.SetStringAsync($"pdf_ok_{aviso.Id}", "OK", 
                     new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromDays(7) },
                     context.CancellationToken);
             } 
@@ -85,7 +84,7 @@ public class GenerateSinglePdfConsumer : IConsumer<Batch<GenerateSinglePdfReques
             {
                 _logger.LogError(ex, "❌ Error en PDF Aviso {Id}", aviso.Id);
                 
-                listaResultados.Add(new ProcesoAviso { 
+                listaFinal.Add(new ProcesoAviso { 
                     AvisoId = aviso.Id, 
                     Estado = EstadoProceso.Error, 
                     ErrorMensaje = ex.Message,
@@ -97,15 +96,19 @@ public class GenerateSinglePdfConsumer : IConsumer<Batch<GenerateSinglePdfReques
             }
         }
 
-        if (listaResultados.Any()) 
+        if (listaFinal.Any()) 
         {
-            _context.ProcesosAvisos.AddRange(listaResultados);
+            _context.ProcesosAvisos.AddRange(listaFinal);
             await _context.SaveChangesAsync(context.CancellationToken);
             
-            // _logger.LogInformation("✅ [BATCH] Finalizado: {Ok} exitosos, {Err} fallidos. Etiqueta: {Msg}", 
-                // listaResultados.Count(x => x.Estado == EstadoProceso.Completado),
-                // listaResultados.Count(x => x.Estado == EstadoProceso.Error),
-                // _labels.Completado);
+            var oks = listaFinal.Count(x => x.Estado == EstadoProceso.Completado);
+            var errs = listaFinal.Count(x => x.Estado == EstadoProceso.Error);
+
+            await _context.Database.ExecuteSqlInterpolatedAsync($@"
+                UPDATE ""ProcesoPeriodo"" 
+                SET ""ProcesadosOk"" = ""ProcesadosOk"" + {oks}, 
+                    ""ProcesadosError"" = ""ProcesadosError"" + {errs}
+                WHERE ""Id"" = {periodoId}");
         }
     }
 

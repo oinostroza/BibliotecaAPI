@@ -1,6 +1,7 @@
 using MassTransit;
 using MiProyecto.Application.Common.Interfaces;
 using MiProyecto.Application.Common.Models;
+using MiProyecto.Domain.Entities;
 using MiProyecto.Domain.Events;
 
 namespace MiProyecto.Application.Avisos.Commands.BulkCreate;
@@ -18,43 +19,39 @@ public class BulkCreateAvisosCommandHandler : IRequestHandler<BulkCreateAvisosCo
         _context = context;
     }
 
-    public async Task<string> Handle(BulkCreateAvisosCommand request, CancellationToken cancellationToken)
+    public async Task<string> Handle(BulkCreateAvisosCommand request, CancellationToken ct)
     {
-        int totalAvisos = 50000;
-        DateTime fechaInicio = new DateTime(2024, 1, 1); // Empezamos en Enero 2024
-        Random rnd = new();
+        var avisos = new List<Aviso>();
+        int totalRegistros = 50000;
+        int registrosPorMes = totalRegistros / 12; // Aprox 4,166 por mes
+        int añoActual = DateTime.Now.Year;
 
-        for (int i = 1; i <= totalAvisos; i++)
+
+        for (int mes = 1; mes <= 12; mes++)
         {
-            // Distribuimos los avisos: los primeros 300 a Enero, luego 50 a Febrero, etc.
-            // Para simplificar la lógica de tu ejemplo, usamos meses correlativos:
-            int mesOffset = (i <= 300) ? 0 : (i <= 350) ? 1 : (i <= 360) ? 2 : (i % 12);
-            var fechaAviso = fechaInicio.AddMonths(mesOffset);
-
-            var eventMsg = new AvisoCreatedIntegrationEvent
+            for (int i = 0; i < registrosPorMes; i++)
             {
-                NumeroPoliza = 3000 + i, // Poliza única para evitar tu validación de duplicados
-                NumeroAviso = 4000 + i,
-                NombreCliente = $"Cliente Dummy {i}",
-                RutCliente = $"{rnd.Next(10, 25)}123456-K",
-                FechaCancelacion = fechaAviso.AddDays(15).ToUniversalTime(), 
-                Cuotas = new List<CuotaDto>
+                var aviso = new Aviso
                 {
-                    new() { NumeroCuota = 1, TotalCuota = rnd.Next(10000, 50000), Observacion = "Cuota 1/4" },
-                    new() { NumeroCuota = 2, TotalCuota = rnd.Next(10000, 50000), Observacion = "Cuota 2/4" },
-                    new() { NumeroCuota = 3, TotalCuota = rnd.Next(20000, 50000), Observacion = "Cuota 3/4" },
-                    new() { NumeroCuota = 4, TotalCuota = rnd.Next(30000, 50000), Observacion = "Cuota 4/4" }
-                }
-            }; 
-
-            // Publicamos al Outbox
-            await _publishEndpoint.Publish(eventMsg, cancellationToken);
-            
-            // Cada 500 registros guardamos el Outbox para no saturar la memoria
-            if (i % 500 == 0) await _context.SaveChangesAsync(cancellationToken);
+                    NumeroPoliza = 1000000 + (mes * 10000) + i,
+                    NumeroAviso = 2000000 + (mes * 10000) + i,
+                    NombreCliente = $"Cliente Mes {mes} Num {i}",
+                    RutCliente = $"12345678-{i % 9}",
+                    FechaCancelacion = DateTime.SpecifyKind(new DateTime(añoActual, mes, 15), DateTimeKind.Utc), 
+                    Detalles = new List<DetalleAviso>
+                    {
+                        new DetalleAviso { NumeroCuota = 1, TotalCuota = 15000 + i },
+                        new DetalleAviso { NumeroCuota = 2, TotalCuota = 15000 + i }
+                    }
+                };
+                avisos.Add(aviso);
+            }
         }
 
-        await _context.SaveChangesAsync(cancellationToken);
-        return $"Encolados {totalAvisos} avisos con sus detalles.";
+        // Usar EFCore.BulkExtensions si lo tienes, o AddRange para 50k es aceptable en 1 min
+        _context.Avisos.AddRange(avisos);
+        await _context.SaveChangesAsync(ct);
+
+        return $"✅ Éxito: Se crearon {avisos.Count} avisos distribuidos en 12 meses.";
     }
 }

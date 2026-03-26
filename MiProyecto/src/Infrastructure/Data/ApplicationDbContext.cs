@@ -16,12 +16,17 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IApplica
     public DbSet<Aviso> Avisos => Set<Aviso>();
     public DbSet<DetalleAviso> DetalleAvisos => Set<DetalleAviso>();
     public DbSet<ProcesoAviso> ProcesosAvisos => Set<ProcesoAviso>();
+    public DbSet<ProcesoPeriodo> ProcesoPeriodo => Set<ProcesoPeriodo>();
+
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
         builder.Entity<ProcesoAviso>()
                 .HasIndex(p => new { p.AvisoId, p.TipoProceso })
+                .IsUnique();
+        builder.Entity<ProcesoPeriodo>()
+                .HasIndex(p => new { p.Mes, p.Anio })
                 .IsUnique();
         builder.AddTransactionalOutboxEntities();
         builder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
